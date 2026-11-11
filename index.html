@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EBREZ - نسخه ۱۳ | غنیمت و کارنامه نبرد</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; min-height: 100%; overflow: hidden; background: #1a2f1a; width: 100%; }
+  body { font-family: Tahoma, sans-serif; color: #f0e6d2; min-height: 100dvh; }
+  #game-screen { height: 100dvh; height: 100svh; }
+
+  #login-screen { position: fixed; inset: 0; z-index: 100; background: linear-gradient(135deg, #2d4a2d, #1a2f1a); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 15px; }
+  .login-box { background: rgba(0,0,0,0.5); border: 2px solid #c9a227; border-radius: 16px; padding: 25px 20px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 0 40px rgba(201,162,39,0.3); }
+  .login-box h1 { color: #c9a227; font-size: 42px; margin-bottom: 5px; text-shadow: 0 0 20px #c9a227; letter-spacing: 3px; }
+  .login-box .sub { color: #a8b8a0; font-size: 12px; margin-bottom: 20px; font-style: italic; }
+  .login-box input { width: 100%; padding: 12px; background: #1a2f1a; border: 1px solid #c9a227; border-radius: 8px; color: white; text-align: center; font-family: inherit; font-size: 16px; margin-bottom: 15px; }
+  #net-status { font-size: 11px; color: #c94a27; margin-top: 10px; }
+
+  .btn { background: linear-gradient(180deg, #c9a227, #8a6d15); color: #1a2f1a; border: none; padding: 10px 15px; font-family: inherit; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 0 #5a4410; text-align: center; display: block; width: 100%; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #5a4410; }
+  .btn.small { padding: 6px 10px; font-size: 12px; width: auto; display: inline-block; }
+  .btn.danger { background: linear-gradient(180deg, #c94a27, #8a2d15); color: #fff; box-shadow: 0 3px 0 #5a1a10; }
+
+  #game-screen { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  #topbar { background: rgba(0,0,0,0.92); border-bottom: 2px solid #c9a227; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; min-height: 44px; height: auto; flex-shrink: 0; z-index: 10; gap: 6px; }
+  .res-group { display: flex; gap: 8px; font-size: 12px; font-weight: bold; flex-wrap: wrap; }
+  .res-group span { display: flex; align-items: center; gap: 3px; background: rgba(0,0,0,0.5); padding: 3px 8px; border-radius: 15px; border: 1px solid #5a4410; }
+  .player-info { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; }
+  .player-name { color: #c9a227; font-weight: bold; font-size: 14px; }
+
+  #game-area { flex: 1 1 auto; min-height: 0; position: relative; background: #3d6b3d; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  #city { position: relative; top: auto; left: auto; transform: none; display: grid; grid-template-columns: repeat(15, 30px); grid-template-rows: repeat(15, 30px); gap: 2px; width: max-content; margin: 8px auto 16px; }
+  .cell { width: 30px; height: 30px; background: rgba(255,255,255,0.05); border: 1px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-size: 19px; position: relative; }
+  .cell.occupied { border: 1px solid #c9a227; background: rgba(201,162,39,0.15); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 2; }
+
+  #bottombar { background: rgba(0,0,0,0.96); border-top: 3px solid #c9a227; min-height: 62px; height: 62px; display: flex; justify-content: space-around; align-items: center; padding: 2px 4px env(safe-area-inset-bottom); flex-shrink: 0; overflow-x: auto; overflow-y: hidden; z-index: 10; }
+  .action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: none; color: #a8b8a0; font-family: inherit; cursor: pointer; min-width: 48px; flex: 1 0 48px; height: 100%; }
+  .action-btn .icon { font-size: 21px; line-height: 1.1; }
+  .action-btn .label { font-size: 9px; font-weight: bold; white-space: nowrap; }
+  .action-btn:active { transform: scale(0.95); color: #c9a227; }
+
+  #modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 10px; }
+  #modal { background: #2d4a2d; border: 2px solid #c9a227; border-radius: 12px; padding: 12px; max-width: 560px; width: 100%; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain; }
+  #modal h2 { color: #c9a227; margin-bottom: 12px; font-size: 20px; text-align: center; border-bottom: 1px solid #5a4410; padding-bottom: 8px; }
+  #modal .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #modal input { width: 100%; padding: 10px; background: #1a2f1a; border: 1px solid #c9a227; border-radius: 6px; color: white; font-family: inherit; font-size: 14px; margin: 5px 0; }
+
+  #toast-wrap { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+  .toast { background: #2d4a2d; border: 2px solid #c9a227; color: #f0e6d2; padding: 8px 20px; border-radius: 20px; margin-bottom: 8px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+  .toast.err { border-color: #c94a27; }
+
+  .list-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #5a4410; font-size: 13px; }
+  .info-text { font-size: 12px; color: #a8b8a0; line-height: 1.6; text-align: justify; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 13px; }
+
+  .chat-box { background: #1a2f1a; border: 1px solid #8a6d15; border-radius: 6px; padding: 8px; height: 200px; overflow-y: auto; margin-bottom: 8px; font-size: 13px; }
+  .chat-msg { padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+  .chat-msg .who { color: #c9a227; font-weight: bold; }
+
+  @media (orientation: landscape) {
+    #topbar { min-height: 40px; padding: 3px 8px; }
+    .res-group { gap: 5px; font-size: 11px; flex-wrap: nowrap; }
+    .res-group span { padding: 2px 6px; }
+    .player-name { font-size: 12px; }
+    #bottombar { height: 56px; min-height: 56px; }
+    .action-btn .icon { font-size: 19px; }
+    #city { grid-template-columns: repeat(15, 28px); grid-template-rows: repeat(15, 28px); }
+    .cell { width: 28px; height: 28px; font-size: 17px; }
+  }
+  @media (orientation: portrait) {
+    #city { grid-template-columns: repeat(15, 26px); grid-template-rows: repeat(15, 26px); }
+    .cell { width: 26px; height: 26px; font-size: 16px; }
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>EBREZ</h1>
+    <p class="sub">فرمانروایی از آنِ کسی است که سرزمینش را آباد کند</p>
+    <input id="login-name" type="text" placeholder="نام فرمانروا" maxlength="15">
+<button id="btn-login" class="btn" onclick="Game.login()">ورود به بازی</button>    <div id="net-status">در حال بررسی اتصال...</div>
+  </div>
+</div>
+
+<div id="game-screen" class="hidden">
+  <div id="topbar">
+    <div class="res-group">
+      <span>💰 <span id="res-gold">0</span></span>
+      <span>⚙️ <span id="res-iron">0</span></span>
+      <span>💎 <span id="res-gem">0</span></span>
+      <span>🏆 <span id="res-cups">0</span></span>
+    </div>
+    <div class="player-info">
+      <span class="player-name" id="hdr-name">-</span>
+      <span id="hdr-lvl" style="font-size:10px;">کاخ ۱</span>
+    </div>
+  </div>
+
+  <div id="game-area"><div id="city"></div></div>
+
+  <div id="bottombar">
+    <button class="action-btn" onclick="Game.openBuildMenu()"><span class="icon">🏗️</span><span class="label">ساخت</span></button>
+    <button class="action-btn" onclick="Game.openArmyMenu()"><span class="icon">⚔️</span><span class="label">ارتش</span></button>
+    <button class="action-btn" onclick="Game.openAttackMenu()"><span class="icon">🔥</span><span class="label">حمله</span></button>
+    <button class="action-btn" onclick="Game.openTribeMenu()"><span class="icon">🛡️</span><span class="label">قبیله</span></button>
+    <button class="action-btn" onclick="Game.openChat()"><span class="icon">💬</span><span class="label">گپ</span></button>
+    <button class="action-btn" onclick="Game.openMarketMenu()"><span class="icon">🏪</span><span class="label">بازار</span></button>
+    <button class="action-btn" onclick="Game.openSettingsMenu()"><span class="icon">⚙️</span><span class="label">تنظیمات</span></button>
+  </div>
+</div>
+
+<div id="modal-bg" class="hidden" onclick="if(event.target===this)Game.closeModal()"><div id="modal"></div></div>
+<button id="battle-history-shortcut" onclick="Game.openBattleHistory()" style="position:fixed;left:8px;top:52px;z-index:30;background:#2d4a2d;color:#f0e6d2;border:1px solid #c9a227;border-radius:8px;padding:6px 9px;font-family:Tahoma;font-size:11px">📜 کارنامه</button>
+<div id="toast-wrap"></div>
+
+<script>
+  const firebaseConfig = {
+  apiKey: "AIzaSyAhuxJO8F7ysskdnMbAqJG-kO8yv2v8IHY",
+  authDomain: "enrez-bf2b6.firebaseapp.com",
+  databaseURL: "https://enrez-bf2b6-default-rtdb.firebaseio.com",
+  projectId: "enrez-bf2b6",
+  storageBucket: "enrez-bf2b6.firebasestorage.app",
+  messagingSenderId: "951775362338",
+  appId: "1:951775362338:web:67ed6dd8afe3ce82c2b97b"
+};
+
+let db = null, auth = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  auth = firebase.auth();
+  document.getElementById('net-status').textContent = 'سرور آماده است؛ برای ورود بزن';
+  document.getElementById('net-status').style.color = '#4caf50';
+} catch(e) { console.error(e); document.getElementById('net-status').textContent = 'خطا در راه‌اندازی Firebase'; }
+
+const ROLE_LABELS = { GK: 'دروازه‌بان', DF: 'دفاع', MF: 'هافبک', FW: 'فوروارد' };
+
+const Game = {
+  state: null, myId: null, GRID: 15, tribeChatRef: null,
+  
+  defaultState(name) {
+    return {
+      name: name, gold: 5000, iron: 5000, gem: 500, cups: 0, wins: 0, losses: 0, battleHistory: [],
+      palace: { level: 1, x: 7, y: 7 }, buildings: [], army: {}, tribe: null
+    };
+  },
+
+  async login() {
+    const name = document.getElementById('login-name').value.trim();
+    const status = document.getElementById('net-status');
+    const button = document.getElementById('btn-login');
+    if (name.length < 3) { alert('نام باید حداقل ۳ حرف باشد'); return; }
+    if (!db || !auth) { alert('Firebase آماده نیست؛ اینترنت و بارگذاری اسکریپت‌ها را بررسی کن'); return; }
+    if (button) { button.disabled = true; button.textContent = 'در حال ورود...'; }
+    if (status) { status.textContent = 'در حال ورود به سرور...'; status.style.color = '#4caf50'; }
+    const withTimeout = (promise, ms, label) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' — زمان پاسخ سرور تمام شد')), ms))
+    ]);
+    try {
+      // قفل صفحه و تمام‌صفحه نباید جلوی ورود را بگیرند؛ پس بدون await اجرا می‌شوند.
+      try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (_) {}
+      try { if (document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); } catch (_) {}
+      const credential = await withTimeout(auth.signInAnonymously(), 12000, 'ورود Firebase');
+      this.myId = credential.user.uid;
+      const playerRef = db.ref('players/' + this.myId);
+      const snap = await withTimeout(playerRef.once('value'), 12000, 'خواندن اطلاعات بازیکن');
+      this.state = snap.val() || this.defaultState(name);
+      this.state.name = this.state.name || name;
+      if (!snap.exists()) await withTimeout(playerRef.set(this.state), 12000, 'ذخیره بازیکن');
+      else await withTimeout(playerRef.update({ name: this.state.name }), 12000, 'به‌روزرسانی نام');
+      // انتشار فقط اطلاعات عمومی در مسیری که سایر بازیکنان اجازه خواندن آن را دارند
+      await withTimeout(db.ref('publicProfiles/' + this.myId).set(this.makePublicProfile()), 12000, 'ثبت نمایه عمومی');
+      playerRef.on('value', (s) => { if (s.val()) { this.state = s.val(); this.render(); } });
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+      this.render();
+      this.toast('ورود آنلاین انجام شد ✅');
+    } catch(e) {
+      console.error(e);
+      const message = e && e.message ? e.message : String(e);
+      if (status) { status.textContent = 'ورود ناموفق: ' + message; status.style.color = '#ff7777'; }
+      alert('ورود انجام نشد: ' + message);
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'ورود به بازی'; }
+    }
+  },
+
+  makePublicProfile() {
+    return { name: String((this.state && this.state.name) || 'فرمانروا').slice(0, 24), palaceLevel: Number(this.state && this.state.palace && this.state.palace.level) || 1, cups: Number(this.state && this.state.cups) || 0 };
+  },
+
+  save() {
+    if (this.state && db && this.myId) {
+      db.ref('players/' + this.myId).set(this.state).catch(e => this.toast('ذخیره نشد: ' + e.message, true));
+      db.ref('publicProfiles/' + this.myId).set(this.makePublicProfile()).catch(e => this.toast('نمایه عمومی ذخیره نشد: ' + e.message, true));
+    }
+  },
+
+  // --- پنل‌ها ---
+  openBuildMenu() {
+    const p = this.state.palace;
+    let html = '<h2>🏗️ ساخت و ساز</h2>';
+    html += `<div class="list-item"><span>🏛️ ارتقای کاخ (سطح ${p.level})</span><button class="btn small" onclick="Game.upgradePalace()">${p.level * 1000} 💰</button></div>`;
+    html += `<div class="list-item"><span>💰 ساخت خزانه</span><button class="btn small" onclick="Game.buildTreasury()">۵۰۰ 💰</button></div>`;
+    html += `<div class="list-item"><span>🏯 ساخت زورخانه</span><button class="btn small" onclick="Game.buildBarracks()">۵۰۰ 💰</button></div>`;
+    html += `<div class="list-item"><span>🔭 ساخت رصدخانه</span><button class="btn small" onclick="Game.buildObservatory()">۳۰۰ 💰</button></div>`;
+    html += `<div class="list-item"><span>🏰 سربازخانه</span><button class="btn small" onclick="Game.buildStructure('barracks')">۲۰۰ 💰</button></div>`;
+    html += `<div class="list-item"><span>🏹 برج کماندار</span><button class="btn small" onclick="Game.buildStructure('towers')">۱۰۰ ⚙️</button></div>`;
+    html += `<div class="list-item"><span>🧱 دیوار</span><button class="btn small" onclick="Game.buildStructure('walls')">۲۵ ⚙️</button></div>`;
+    html += '<button class="btn" style="margin-top:10px;" onclick="Game.closeModal()">بستن</button>';
+    this.modal(html);
+  },
+
+  upgradePalace() {
+    const p = this.state.palace, cost = p.level * 1000;
+    if (this.state.gold < cost) { this.toast('زر کم', true); return; }
+    this.state.gold -= cost; p.level++;
+    this.toast('کاخ به سطح ' + p.level + ' رفت'); this.save(); this.render(); this.openBuildMenu();
+  },
+
+  addBuilding(type, icon, title, goldCost, ironCost) {
+    if (this.state.gold < goldCost || this.state.iron < ironCost) { this.toast('منابع کافی نیست', true); return; }
+    const occupied = new Set();
+    const p = this.state.palace; occupied.add(p.y * this.GRID + p.x);
+    (this.state.buildings || []).forEach(b => occupied.add(b.y * this.GRID + b.x));
+    let spot = -1;
+    for (let i = 0; i < this.GRID * this.GRID; i++) { if (!occupied.has(i)) { spot = i; break; } }
+    if (spot < 0) { this.toast('جای خالی روی نقشه نیست', true); return; }
+    this.state.gold -= goldCost; this.state.iron -= ironCost;
+    this.state.buildings = this.state.buildings || [];
+    this.state.buildings.push({ id: 'b' + Date.now(), type, icon, name: title, x: spot % this.GRID, y: Math.floor(spot / this.GRID), level: 1 });
+    this.toast(title + ' روی نقشه قرار گرفت'); this.save(); this.render(); this.openBuildMenu();
+  },
+  buildTreasury() { this.addBuilding('treasury', '💰', 'خزانه', 500, 0); },
+  buildBarracks() { this.addBuilding('dojo', '🥋', 'زورخانه', 500, 0); },
+  buildObservatory() { this.addBuilding('observatory', '🔭', 'رصدخانه', 300, 0); },
+  buildStructure(type) {
+    const map = { barracks: ['🏰','سربازخانه',200,0], towers: ['🏹','برج کماندار',0,100], walls: ['🧱','دیوار',0,25] };
+    const item = map[type]; if (!item) return;
+    this.addBuilding(type, item[0], item[1], item[2], item[3]);
+  },
+
+  selectCell(index) {
+    const x = index % this.GRID, y = Math.floor(index / this.GRID);
+    if (this.moveBuildingId) {
+      const b = (this.state.buildings || []).find(v => v.id === this.moveBuildingId);
+      if (!b) { this.moveBuildingId = null; return; }
+      const p = this.state.palace;
+      const occupied = (p.x === x && p.y === y) || (this.state.buildings || []).some(v => v.id !== b.id && v.x === x && v.y === y);
+      if (occupied) { this.toast('این خانه اشغال است؛ یک خانه خالی انتخاب کن', true); return; }
+      b.x = x; b.y = y; this.moveBuildingId = null;
+      this.toast('سازه جابه‌جا شد'); this.save(); this.render(); return;
+    }
+    const p = this.state.palace;
+    if (p.x === x && p.y === y) {
+      this.modal(`<h2>🏛️ کاخ کسری</h2><p>سطح فعلی: ${p.level}</p><button class="btn" onclick="Game.upgradePalace()">ارتقای کاخ — ${p.level * 1000} زر</button><button class="btn" style="margin-top:8px" onclick="Game.closeModal()">بستن</button>`);
+      return;
+    }
+    const b = (this.state.buildings || []).find(v => v.x === x && v.y === y);
+    if (!b) return;
+    const level = b.level || 1;
+    const ironType = b.type === 'towers' || b.type === 'walls';
+    const cost = ironType ? (b.type === 'towers' ? 100 : 25) * level : 200 * level;
+    const resource = ironType ? 'آهن' : 'زر';
+    this.modal(`<h2>${b.icon || '🏠'} ${b.name || 'سازه'}</h2><p>سطح فعلی: ${level}</p><p>مختصات: ${x + 1} ، ${y + 1}</p><button class="btn" onclick="Game.upgradeBuilding('${b.id}')">ارتقا — ${cost} ${resource}</button><button class="btn" style="margin-top:8px" onclick="Game.startMove('${b.id}')">جابه‌جایی</button><button class="btn" style="margin-top:8px" onclick="Game.closeModal()">بستن</button>`);
+  },
+
+  upgradeBuilding(id) {
+    const b = (this.state.buildings || []).find(v => v.id === id);
+    if (!b) return;
+    const level = b.level || 1;
+    const ironType = b.type === 'towers' || b.type === 'walls';
+    const cost = ironType ? (b.type === 'towers' ? 100 : 25) * level : 200 * level;
+    if (ironType) {
+      if (this.state.iron < cost) { this.toast('آهن کافی نیست', true); return; }
+      this.state.iron -= cost;
+    } else {
+      if (this.state.gold < cost) { this.toast('زر کافی نیست', true); return; }
+      this.state.gold -= cost;
+    }
+    b.level = level + 1;
+    this.toast((b.name || 'سازه') + ' به سطح ' + b.level + ' ارتقا یافت');
+    this.save(); this.render(); this.selectCell(b.y * this.GRID + b.x);
+  },
+
+  startMove(id) {
+    this.moveBuildingId = id;
+    this.closeModal();
+    this.toast('حالا یک خانه خالی روی نقشه لمس کن');
+  },
+
+  openArmyMenu() {
+    let html = '<h2>⚔️ پادگان</h2>';
+    html += `<div class="list-item"><span>شمشیرزن</span><button class="btn small" onclick="Game.train('⚔️', 50)">۵۰ 💰</button></div>`;
+    html += `<div class="list-item"><span>کماندار</span><button class="btn small" onclick="Game.train('🏹', 80)">۸۰ 💰</button></div>`;
+    html += `<div class="list-item"><span>سوار</span><button class="btn small" onclick="Game.train('🐎', 150)">۱۵۰ 💰</button></div>`;
+    html += '<div style="margin-top:10px;"><h3>ارتش شما:</h3>';
+    for (let k in this.state.army) html += `<div class="row"><span>${k}</span><span>${this.state.army[k]}</span></div>`;
+    html += '</div><button class="btn" style="margin-top:10px;" onclick="Game.closeModal()">بستن</button>';
+    this.modal(html);
+  },
+
+  async train(icon, cost) {
+    try {
+      if (!this.state || !this.myId) { this.toast('اول وارد بازی شو', true); return; }
+      cost = Number(cost) || 0;
+      this.state.army = this.state.army && typeof this.state.army === 'object' ? this.state.army : {};
+      this.state.gold = Number(this.state.gold) || 0;
+      if (this.state.gold < cost) { this.toast('زر کافی نیست', true); return; }
+      this.state.gold -= cost;
+      this.state.army[icon] = (Number(this.state.army[icon]) || 0) + 1;
+      this.render();
+      this.openArmyMenu();
+      if (db) {
+        await db.ref('players/' + this.myId).update({ gold: this.state.gold, army: this.state.army });
+        await db.ref('publicProfiles/' + this.myId).set(this.makePublicProfile());
+      }
+      this.toast(icon + ' با موفقیت آموزش دید');
+    } catch (e) {
+      this.toast('ذخیره نیرو ناموفق بود: ' + (e.code || e.message || 'خطای ناشناخته'), true);
+    }
+  },
+
+  async openAttackMenu() {
+    if (!db) { this.toast('اتصال نیست', true); return; }
+    let html = '<h2>🔥 حمله به بازیکنان</h2><div id="attack-list">در حال دریافت...</div>';
+    html += '<button class="btn" style="margin-top:10px;" onclick="Game.closeModal()">بستن</button>';
+    this.modal(html);
+    
+    try {
+      const snap = await db.ref('publicProfiles').once('value');
+      const players = snap.val();
+      let list = '', count = 0;
+      if (players && typeof players === 'object') {
+        for (let id in players) {
+          if (id === this.myId || !players[id] || typeof players[id] !== 'object') continue;
+          const player = players[id];
+          const playerName = String(player.name || 'فرمانروا').replace(/[<>]/g, '');
+          const palaceLevel = Number(player.palaceLevel) || 1;
+          const cups = Number(player.cups) || 0;
+          count++;
+          list += `<div class="list-item" style="flex-direction:column; align-items:flex-start; gap:5px;">
+            <div style="display:flex; justify-content:space-between; width:100%;"><span style="color:#c9a227;">👤 ${playerName}</span><span style="font-size:11px;">کاخ ${palaceLevel} | 🏆 ${cups}</span></div>
+            <button class="btn danger small" style="width:100%;" onclick="Game.attackPlayer('${id}')">ورود به نبرد</button>
+          </div>`;
+        }
+      }
+      if (count === 0) {
+        list = '<p style="text-align:center;color:#a8b8a0;margin-bottom:8px;">بازیکن واقعی دیگری پیدا نشد؛ دو حریف تمرینی آماده‌اند.</p>';
+        const bots = [
+          {id:'bot_easy', name:'سرباز تمرینی', level:1, cups:0, label:'آسان'},
+          {id:'bot_guard', name:'نگهبان ساسانی', level:3, cups:15, label:'متوسط'}
+        ];
+        for (const bot of bots) {
+          list += `<div class="list-item" style="flex-direction:column;align-items:flex-start;gap:5px;"><div style="display:flex;justify-content:space-between;width:100%;"><span style="color:#c9a227;">🤖 ${bot.name} <small>(حریف آزمایشی)</small></span><span style="font-size:11px;">کاخ ${bot.level} | 🏆 ${bot.cups} | ${bot.label}</span></div><button class="btn danger small" style="width:100%;" onclick="Game.attackPlayer('${bot.id}')">ورود به نبرد</button></div>`;
+        }
+      }
+      const box = document.getElementById('attack-list');
+      if (box) box.innerHTML = list;
+    } catch(e) {
+      console.error('EBREZ attack list error:', e);
+      const box = document.getElementById('attack-list');
+      const code = e && e.code ? String(e.code) : 'بدون کد';
+      const message = e && e.message ? String(e.message) : String(e);
+      if (box) box.innerHTML = `<div style="color:#ff9999;line-height:1.9;direction:ltr;text-align:left;overflow-wrap:anywhere;"><b>خطای دریافت بازیکنان</b><br>Code: ${code}<br>Message: ${message}</div><p style="font-size:12px;margin-top:8px;">این متن را برای بررسی بفرست.</p>`;
+    }
+  },
+
+  async attackPlayer(targetId) {
+    try {
+      if (!db || !this.myId) { this.toast('ابتدا آنلاین وارد شو', true); return; }
+      let target;
+      const botTargets = {
+        bot_easy: {name:'سرباز تمرینی', palaceLevel:1},
+        bot_guard: {name:'نگهبان ساسانی', palaceLevel:3}
+      };
+      if (botTargets[targetId]) {
+        target = botTargets[targetId];
+      } else {
+        const snap = await db.ref('publicProfiles/' + targetId).once('value');
+        target = snap.val();
+      }
+      if (!target) { this.toast('اطلاعات عمومی بازیکن پیدا نشد', true); return; }
+      this.battle = { targetId, isBot: !!botTargets[targetId], targetName: String(target.name || 'فرمانروا').replace(/[<>]/g,''), palaceLevel: Number(target.palaceLevel)||1, deployed: [], selected: '⚔️', seconds: 90, running: false, step: 0, logs: ['نبرد آماده است؛ نیروها را در پایین نقشه مستقر کن.'] };
+      this.showBattlefield();
+    } catch(e) { this.toast('آماده‌سازی نبرد ناموفق بود: ' + (e.code || e.message || e), true); }
+  },
+
+  showBattlefield() {
+    const b=this.battle; if (!b) return;
+    const army=this.state.army || {};
+    const counts={ '⚔️':Number(army['⚔️']||army.swordsman||0), '🏹':Number(army['🏹']||army.archer||0), '🐎':Number(army['🐎']||army.rider||0) };
+    const buildings=b.buildings || [
+      {id:'palace',cell:3,icon:'🏰',name:'کاخ',hp:900,max:900},
+      {id:'tower1',cell:1,icon:'🗼',name:'برج نگهبانی',hp:420,max:420},
+      {id:'tower2',cell:5,icon:'🗼',name:'برج کماندار',hp:420,max:420},
+      {id:'barracks',cell:10,icon:'⚒️',name:'سربازخانه',hp:350,max:350},
+      {id:'storage',cell:12,icon:'📦',name:'خزانه',hp:300,max:300}
+    ]; b.buildings=buildings;
+    let cells='';
+    for(let i=0;i<35;i++){
+      const troop=b.deployed.find(u=>u.hp>0&&u.cell===i);
+      const building=buildings.find(x=>x.cell===i&&x.hp>0);
+      const defender=(b.defenders||[]).find(x=>x.hp>0&&x.cell===i);
+      const icon=troop?troop.icon:(defender?'🛡️':building?building.icon:'·');
+      const bg=i<14?'#526c45':i<21?'#718653':'#78945b';
+      const hp=troop?`<small style="position:absolute;bottom:0;font-size:8px;color:#fff">${Math.ceil(troop.hp)}</small>`:building?`<small style="position:absolute;bottom:0;font-size:8px;color:#fff">${Math.ceil(building.hp)}</small>`:'';
+      cells+=`<button ${b.running?'disabled':''} onclick="Game.deployAt(${i})" style="height:43px;border:1px solid #71835d;border-radius:5px;background:${bg};color:white;font-size:19px;position:relative">${icon}${hp}</button>`;
+    }
+    const troopBtns=Object.keys(counts).map(icon=>`<button class="btn small" ${b.running?'disabled':''} onclick="Game.selectBattleTroop('${icon}')" style="margin:3px;${b.selected===icon?'border:2px solid #ffd34d':''}">${icon} ${counts[icon]}</button>`).join('');
+    const destroyed=buildings.filter(x=>x.hp<=0).length;
+    this.modal(`<h2>⚔️ میدان نبرد با ${this.escapeHtml(b.targetName)}</h2><p class="info-text">کاخ حریف: سطح ${b.palaceLevel} | زمان: <b id="battle-time">${b.seconds}</b> ثانیه | سازه‌های نابودشده: <b id="battle-destroyed">${destroyed}/${buildings.length}</b></p><p class="info-text">نیرو را انتخاب کن و در ردیف‌های پایین مستقر کن. نیروها خودکار حرکت و با نزدیک‌ترین هدف درگیر می‌شوند.</p><div id="battle-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;direction:ltr">${cells}</div><div style="margin-top:8px;text-align:center">${troopBtns}</div><p class="info-text" id="battle-status">نیروهای زنده: ${b.deployed.filter(u=>u.hp>0).length} | مستقرشده: ${b.deployed.length}</p><div id="battle-log" style="background:#142414;border:1px solid #8a6d15;border-radius:7px;padding:8px;margin:8px 0;max-height:115px;overflow:auto;font-size:12px;line-height:1.9"><b style="color:#ffd34d">گزارش زنده نبرد</b><div>${b.logs.map(x=>'• '+this.escapeHtml(x)).join('<br>')}</div></div><button class="btn danger" ${b.running?'disabled':''} onclick="Game.beginBattle()">شروع حمله</button><button class="btn" style="margin-top:6px" onclick="Game.closeBattle()">بازگشت</button>`);
+  },
+
+  selectBattleTroop(icon) { if (!this.battle || this.battle.running) return; this.battle.selected=icon; this.showBattlefield(); },
+
+  deployAt(cell) {
+    const b=this.battle; if (!b || b.running || cell<21) return;
+    const army=this.state.army||{}; const key={'⚔️':'⚔️','🏹':'🏹','🐎':'🐎'}[b.selected];
+    const available=Number(army[key] || army[({'⚔️':'swordsman','🏹':'archer','🐎':'rider'})[key]] || 0);
+    const used=b.deployed.filter(u=>u.icon===key).length;
+    if (used>=available) { this.toast('از این نوع نیرو بیشتر نداری',true); return; }
+    if (b.deployed.some(u=>u.cell===cell)) return;
+    b.deployed.push({icon:key,cell}); this.showBattlefield();
+  },
+
+  beginBattle() {
+    const b=this.battle; if(!b||b.running)return;
+    if(!b.deployed.length){this.toast('اول نیروها را روی نقشه مستقر کن',true);return;}
+    b.running=true; b.seconds=90; b.step=0;
+    b.deployed.forEach(u=>{u.hp=u.icon==='🐎'?180:u.icon==='🏹'?90:150;u.maxHp=u.hp;u.damage=u.icon==='🐎'?42:u.icon==='🏹'?30:38;u.range=u.icon==='🏹'?2:1;});
+    b.defenders=[{cell:8,hp:120},{cell:9,hp:120},{cell:11,hp:120},{cell:13,hp:120}];
+    b.logs.unshift('🚩 فرمان حمله صادر شد؛ نیروها از محل استقرار پیشروی می‌کنند.');
+    this.showBattlefield();
+    this.battleTimer=setInterval(()=>{
+      if(!this.battle||this.battle!==b){clearInterval(this.battleTimer);return;}
+      b.seconds--; const timer=document.getElementById('battle-time');if(timer)timer.textContent=b.seconds;
+      this.advanceBattle();
+      if(b.seconds<=0||b.buildings.every(x=>x.hp<=0)||b.deployed.every(x=>x.hp<=0)){
+        clearInterval(this.battleTimer);this.finishBattle();
+      }
+    },1000);
+  },
+
+  advanceBattle() {
+    const b=this.battle;if(!b||!b.running)return;b.step++;
+    const alive=b.deployed.filter(u=>u.hp>0);let events=[];
+    // Defenders engage nearby attackers; towers fire periodically.
+    alive.forEach(u=>{
+      const row=Math.floor(u.cell/7),col=u.cell%7;
+      const guard=(b.defenders||[]).find(d=>d.hp>0&&Math.abs(Math.floor(d.cell/7)-row)<=1&&Math.abs(d.cell%7-col)<=1);
+      if(guard){u.hp-=12;guard.hp-=u.damage;events.push(`${u.icon} با مدافعان درگیر شد.`);}
+      else {
+        const target=b.buildings.filter(x=>x.hp>0).sort((a,c)=>Math.abs(Math.floor(a.cell/7)-row)+Math.abs(a.cell%7-col)-(Math.abs(Math.floor(c.cell/7)-row)+Math.abs(c.cell%7-col)))[0];
+        if(target){const distance=Math.abs(Math.floor(target.cell/7)-row)+Math.abs(target.cell%7-col);
+          if(distance<=u.range){target.hp-=u.damage;events.push(`${u.icon} به ${target.name} حمله کرد.`);}
+          else {const nr=Math.max(0,row-1);u.cell=nr*7+col;events.push(`${u.icon} یک خانه پیشروی کرد.`);}
+        }
+      }
+    });
+    if(b.step%4===0){const target=alive.filter(u=>u.hp>0).sort((a,c)=>a.hp-c.hp)[0];if(target){target.hp-=35;events.push('🏹 برج دفاعی به یکی از مهاجمان تیر زد.');}}
+    b.defenders.forEach(d=>{if(d.hp<=0&&d.cell>=0){d.cell=-1;events.push('🛡️ یکی از مدافعان از میدان خارج شد.');}});
+    b.buildings.forEach(x=>{if(x.hp<=0&&!x.reported){x.reported=true;events.push(`💥 ${x.name} نابود شد!`);}});
+    b.deployed.forEach(u=>{if(u.hp<=0&&!u.reported){u.reported=true;events.push(`${u.icon} از نبرد خارج شد.`);}});
+    if(!events.length)events.push('نیروها در حال پیشروی و جست‌وجوی هدف هستند.');
+    b.logs.unshift(...events.slice(0,4));b.logs=b.logs.slice(0,10);
+    const log=document.getElementById('battle-log');if(log)log.innerHTML='<b style="color:#ffd34d">گزارش زنده نبرد</b><div>'+b.logs.map(x=>'• '+this.escapeHtml(x)).join('<br>')+'</div>';
+    const status=document.getElementById('battle-status');if(status)status.textContent=`نیروهای زنده: ${b.deployed.filter(u=>u.hp>0).length} | مدافعان باقی‌مانده: ${b.defenders.filter(d=>d.hp>0).length}`;
+    const destroyed=b.buildings.filter(x=>x.hp<=0).length;const dc=document.getElementById('battle-destroyed');if(dc)dc.textContent=`${destroyed}/${b.buildings.length}`;
+    const grid=document.getElementById('battle-grid');if(grid){const buttons=grid.querySelectorAll('button');buttons.forEach((el,i)=>{const u=b.deployed.find(x=>x.hp>0&&x.cell===i),d=b.defenders.find(x=>x.hp>0&&x.cell===i),building=b.buildings.find(x=>x.hp>0&&x.cell===i);el.textContent=u?u.icon:d?'🛡️':building?building.icon:'·';});}
+  },
+
+  finishBattle() {
+    const b=this.battle;if(!b || b.finished)return;
+    b.finished=true;
+    const total=b.buildings.length,destroyed=b.buildings.filter(x=>x.hp<=0).length;
+    const palace=b.buildings.find(x=>x.id==='palace');
+    const palaceDown=!!palace && palace.hp<=0;
+    const percent=total?Math.round(destroyed/total*100):0;
+    const stars=palaceDown&&percent>=50?3:palaceDown||percent>=50?2:percent>0?1:0;
+    const alive=b.deployed.filter(u=>u.hp>0).length;
+    // ربات‌ها خزانه آزمایشی دارند؛ موجودی بازیکن واقعی هرگز از سمت مرورگر تغییر داده نمی‌شود.
+    let lootGold=0, lootIron=0;
+    if(b.isBot){
+      const rate=stars===3?0.50:stars===2?0.25:stars===1?0.10:0;
+      lootGold=Math.floor(2000*rate); lootIron=Math.floor(2000*rate);
+      this.state.gold=(Number(this.state.gold)||0)+lootGold;
+      this.state.iron=(Number(this.state.iron)||0)+lootIron;
+    }
+    this.state.cups=(Number(this.state.cups)||0)+stars;
+    if(stars>0)this.state.wins=(Number(this.state.wins)||0)+1;
+    else this.state.losses=(Number(this.state.losses)||0)+1;
+    this.state.battleHistory=Array.isArray(this.state.battleHistory)?this.state.battleHistory:[];
+    this.state.battleHistory.unshift({target:b.targetName,bot:!!b.isBot,stars,destroyed,total,percent,lootGold,lootIron,time:Date.now()});
+    this.state.battleHistory=this.state.battleHistory.slice(0,20);
+    this.save();this.render();
+    const lootText=b.isBot?`غنیمت ربات آزمایشی: ${lootGold} زر و ${lootIron} آهن`:'غنیمت بازیکن واقعی: فعلاً ثبت نمی‌شود (نیازمند تأیید امن سرور)';
+    this.modal(`<h2>نتیجه نبرد</h2><p style="font-size:30px;text-align:center">${'⭐'.repeat(stars)}${'☆'.repeat(3-stars)}</p><p class="info-text">سازه‌های نابودشده: ${destroyed} از ${total} (${percent}٪)<br>نیروهای باقی‌مانده: ${alive}<br>جام دریافتی: ${stars}<br>${lootText}<br>کارنامه: ${this.state.wins||0} پیروزی / ${this.state.losses||0} شکست</p><p class="info-text">${b.isBot?'این غنیمت از خزانه فرضی ربات تمرینی محاسبه شده و فقط به حساب خودت اضافه می‌شود.':'برای جلوگیری از دست‌کاری، غارت بازیکن واقعی تا راه‌اندازی منطق امن سمت سرور غیرفعال است.'}</p><button class="btn" onclick="Game.closeModal();Game.openAttackMenu()">بازگشت به فهرست حریفان</button>`);
+  },
+
+  closeBattle() { if(this.battleTimer) clearInterval(this.battleTimer); this.battle=null; this.closeModal(); },
+
+  async openTribeMenu() {
+    if (!db || !this.myId) { this.toast('ابتدا آنلاین وارد شو', true); return; }
+    if (!this.state.tribe) {
+      this.modal('<h2>🛡️ تالار قبایل</h2><p class="info-text">برای ساخت قبیله به ۲۰ گوهر نیاز داری. حداکثر ظرفیت هر قبیله ۵۰ نفر است.</p><input id="tribe-name-input" maxlength="20" placeholder="نام قبیله"><button class="btn" onclick="Game.createTribe()">ساخت قبیله — ۲۰ 💎</button><button class="btn" style="margin-top:8px" onclick="Game.showAllTribes()">مشاهده و پیوستن به قبایل</button><button class="btn" style="margin-top:8px" onclick="Game.closeModal()">بستن</button>');
+      return;
+    }
+    const t = this.state.tribe;
+    if (!t.id) { this.state.tribe = null; this.save(); this.openTribeMenu(); return; }
+    if (!this.myId || !auth || !auth.currentUser || auth.currentUser.uid !== this.myId) { this.toast('نشست ورود معتبر نیست؛ دوباره وارد شو', true); return; }
+    try {
+      const snap = await db.ref('tribes/' + t.id).once('value');
+      const tribe = snap.val();
+      if (!tribe) { this.state.tribe = null; this.save(); this.openTribeMenu(); return; }
+      const members = tribe.members || {};
+      const ids = Object.keys(members);
+      let memberHtml = '';
+      for (const uid of ids) {
+        let label = uid === this.myId ? this.state.name : 'بازیکن';
+        try { const ps = await db.ref('players/' + uid + '/name').once('value'); label = ps.val() || label; } catch(e) {}
+        const role = uid === tribe.leader ? '👑 رهبر' : uid === tribe.deputy ? '⭐ جانشین' : 'عضو';
+        memberHtml += `<div class="list-item"><span>${this.escapeHtml(label)}</span><span>${role}</span></div>`;
+      }
+      const leaderControls = tribe.leader === this.myId ? `<button class="btn" style="margin-top:8px" onclick="Game.chooseDeputy()">انتخاب جانشین</button>` : '';
+      this.modal(`<h2>🛡️ ${this.escapeHtml(tribe.name)}</h2><p class="info-text" style="text-align:center">اعضا: ${ids.length}/50</p><div style="max-height:130px;overflow:auto">${memberHtml || 'هنوز عضوی نیست'}</div>${leaderControls}<button class="btn" style="margin-top:8px" onclick="Game.openTribeChat()">💬 گفت‌وگوی قبیله</button><button class="btn" style="margin-top:8px" onclick="Game.openWarMenu()">⚔️ جنگ قبیله‌ای</button><button class="btn danger" style="margin-top:8px" onclick="Game.leaveTribe()">خروج از قبیله</button><button class="btn" style="margin-top:8px" onclick="Game.closeModal()">بستن</button>`);
+    } catch(e) {
+      console.error('EBREZ tribe read failed:', e);
+      const code = e && e.code ? e.code : 'unknown';
+      const message = e && e.message ? e.message : String(e);
+      this.modal(`<h2>⚠️ خطای دریافت قبیله</h2><p class="info-text">کد خطا: ${this.escapeHtml(code)}</p><p class="info-text">شرح: ${this.escapeHtml(message)}</p><p class="info-text">اگر کد permission-denied باشد، قوانین خواندن مسیر tribes در Firebase باید اصلاح شود.</p><button class="btn" onclick="Game.openTribeMenu()">تلاش دوباره</button><button class="btn" style="margin-top:8px" onclick="Game.closeModal()">بستن</button>`);
+    }
+  },
+
+  escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  },
+
+  async createTribe() {
+    const input = document.getElementById('tribe-name-input');
+    const name = input ? input.value.trim() : '';
+    if (name.length < 3) { this.toast('نام قبیله باید حداقل ۳ حرف باشد', true); return; }
+    if (this.state.tribe) { this.toast('در حال حاضر عضو یک قبیله‌ای', true); return; }
+    if (this.state.palace.level < 3) { this.toast('برای ساخت قبیله باید کاخت سطح ۳ باشد', true); return; }
+    if (this.state.gem < 20) { this.toast('۲۰ گوهر لازم است', true); return; }
+    try {
+      const ref = db.ref('tribes').push();
+      const tribe = { name, leader: this.myId, deputy: null, members: { [this.myId]: true }, created: Date.now(), memberCount: 1 };
+      await ref.set(tribe);
+      this.state.gem -= 20; this.state.tribe = { id: ref.key, name };
+      this.save(); this.render(); this.toast('قبیله ساخته شد'); this.openTribeMenu();
+    } catch(e) { console.error('EBREZ create tribe failed:', e); this.modal(`<h2>⚠️ ساخت قبیله ناموفق بود</h2><p class="info-text">${this.escapeHtml(e && e.code ? e.code : 'unknown')}</p><p class="info-text">${this.escapeHtml(e && e.message ? e.message : String(e))}</p><button class="btn" onclick="Game.openTribeMenu()">بازگشت</button>`); }
+  },
+
+  async showAllTribes() {
+    this.modal('<h2>📜 فهرست قبایل</h2><div id="tribes-list">در حال دریافت...</div><button class="btn" style="margin-top:8px" onclick="Game.openTribeMenu()">بازگشت</button>');
+    try {
+      const snap = await db.ref('tribes').once('value'); const tribes = snap.val() || {};
+      let list = '';
+      Object.keys(tribes).forEach(id => {
+        const t = tribes[id]; const count = Object.keys(t.members || {}).length;
+        if (count < 50) list += `<div class="list-item"><span>🛡️ ${this.escapeHtml(t.name)} (${count}/50)</span><button class="btn small" onclick="Game.joinTribe('${id}')">پیوستن</button></div>`;
+      });
+      const box = document.getElementById('tribes-list'); if (box) box.innerHTML = list || '<p class="info-text">قبیلهٔ آزادی پیدا نشد.</p>';
+    } catch(e) { const box = document.getElementById('tribes-list'); if (box) box.textContent = 'خطا در دریافت قبایل'; }
+  },
+
+  async joinTribe(tribeId) {
+    if (this.state.tribe) { this.toast('ابتدا باید از قبیله فعلی خارج شوی', true); return; }
+    try {
+      const ref = db.ref('tribes/' + tribeId);
+      const result = await ref.transaction(t => {
+        if (!t) return;
+        t.members = t.members || {};
+        if (t.members[this.myId] || Object.keys(t.members).length >= 50) return;
+        t.members[this.myId] = true; t.memberCount = Object.keys(t.members).length; return t;
+      });
+      if (!result.committed) { this.toast('قبیله پر است یا امکان پیوستن وجود ندارد', true); return; }
+      const t = result.snapshot.val(); this.state.tribe = { id: tribeId, name: t.name };
+      this.save(); this.closeModal(); this.toast('به قبیله پیوستی');
+    } catch(e) { this.toast('پیوستن ناموفق بود؛ قوانین دیتابیس را بررسی کن', true); }
+  },
+
+  async chooseDeputy() {
+    const t = this.state.tribe; if (!t) return;
+    const snap = await db.ref('tribes/' + t.id).once('value'); const tribe = snap.val();
+    if (!tribe || tribe.leader !== this.myId) { this.toast('فقط رهبر می‌تواند جانشین انتخاب کند', true); return; }
+    const ids = Object.keys(tribe.members || {}).filter(id => id !== this.myId);
+    if (!ids.length) { this.toast('برای انتخاب جانشین، قبیله باید عضو دیگری داشته باشد', true); return; }
+    let html = '<h2>⭐ انتخاب جانشین</h2>';
+    for (const id of ids) {
+      let name = 'بازیکن'; try { name = (await db.ref('players/' + id + '/name').once('value')).val() || name; } catch(e) {}
+      html += `<button class="btn" style="margin:5px 0" onclick="Game.setDeputy('${id}')">${this.escapeHtml(name)}</button>`;
+    }
+    html += '<button class="btn" style="margin-top:8px" onclick="Game.openTribeMenu()">بازگشت</button>'; this.modal(html);
+  },
+
+  async setDeputy(uid) {
+    const t = this.state.tribe; if (!t) return;
+    try { await db.ref('tribes/' + t.id).transaction(v => { if (!v || v.leader !== this.myId || !v.members || !v.members[uid]) return; v.deputy = uid; return v; }); this.toast('جانشین تعیین شد'); this.openTribeMenu(); }
+    catch(e) { this.toast('تغییر جانشین انجام نشد', true); }
+  },
+
+  async openWarMenu() {
+    const t = this.state.tribe;
+    if (!t || !t.id) { this.toast('ابتدا عضو یک قبیله شو', true); return; }
+    try {
+      const snap = await db.ref('tribes/' + t.id).once('value');
+      const tribe = snap.val();
+      if (!tribe || !tribe.members || !tribe.members[this.myId]) { this.toast('عضویت قبیله تأیید نشد', true); return; }
+      if (tribe.activeWar) { await this.showTribeWar(tribe.activeWar); return; }
+      if (tribe.leader !== this.myId) {
+        this.modal('<h2>⚔️ جنگ قبیله‌ای</h2><p class="info-text">هنوز جنگی شروع نشده است. فقط رئیس قبیله می‌تواند جنگ را آغاز کند.</p><button class="btn" onclick="Game.openTribeMenu()">بازگشت</button>');
+        return;
+      }
+      if (Object.keys(tribe.members).length < 4) { this.toast('برای شروع جنگ، قبیله باید حداقل ۴ عضو داشته باشد', true); return; }
+      this.modal('<h2>⚔️ انتخاب حریف</h2><div id="war-enemy-list">در حال دریافت قبایل...</div><button class="btn" style="margin-top:8px" onclick="Game.openTribeMenu()">بازگشت</button>');
+      const allSnap = await db.ref('tribes').once('value');
+      const all = allSnap.val() || {}; let html = '';
+      for (const id of Object.keys(all)) {
+        const enemy = all[id];
+        if (id === t.id || !enemy || enemy.activeWar || Object.keys(enemy.members || {}).length < 4) continue;
+        html += `<div class="list-item"><span>${this.escapeHtml(enemy.name || 'قبیله')} (${Object.keys(enemy.members || {}).length}/50)</span><button class="btn small" onclick="Game.startTribeWar('${id}')">دعوت به جنگ</button></div>`;
+      }
+      const box = document.getElementById('war-enemy-list'); if (box) box.innerHTML = html || '<p class="info-text">حریف مناسبی پیدا نشد.</p>';
+    } catch(e) { this.toast('دریافت اطلاعات جنگ ناموفق بود: ' + (e.message || e), true); }
+  },
+
+  async startTribeWar(enemyId) {
+    const ownId = this.state.tribe && this.state.tribe.id;
+    if (!ownId || !this.myId) return;
+    try {
+      const ids = ['tribes/' + ownId, 'tribes/' + enemyId];
+      const snaps = await Promise.all(ids.map(path => db.ref(path).once('value')));
+      const own = snaps[0].val(), enemy = snaps[1].val();
+      if (!own || !enemy || own.leader !== this.myId) { this.toast('فقط رئیس می‌تواند جنگ را شروع کند', true); return; }
+      if (Object.keys(own.members || {}).length < 4 || Object.keys(enemy.members || {}).length < 4) { this.toast('هر دو قبیله باید حداقل ۴ عضو داشته باشند', true); return; }
+      if (own.activeWar || enemy.activeWar) { this.toast('یکی از قبیله‌ها در جنگ دیگری است', true); return; }
+      const warId = db.ref('tribeWars').push().key;
+      const makeSide = tr => ({ name: tr.name || 'قبیله', leader: tr.leader, members: tr.members || {}, lineup: Object.keys(tr.members || {}), stars: {}, usedAttackers: {}, attacks: 0, score: 0 });
+      const war = { status: 'active', created: Date.now(), maxAttacks: 10, tribes: { [ownId]: makeSide(own), [enemyId]: makeSide(enemy) }, attacks: [] };
+      const updates = {};
+      updates['tribeWars/' + warId] = war;
+      updates['tribes/' + ownId + '/activeWar'] = warId;
+      updates['tribes/' + enemyId + '/activeWar'] = warId;
+      await db.ref().update(updates);
+      this.toast('جنگ قبیله‌ای آغاز شد!'); await this.showTribeWar(warId);
+    } catch(e) { console.error(e); this.toast('شروع جنگ ناموفق بود: ' + (e.message || e), true); }
+  },
+
+  async showTribeWar(warId) {
+    try {
+      const snap = await db.ref('tribeWars/' + warId).once('value'); const war = snap.val();
+      if (!war || !war.tribes) { this.toast('اطلاعات جنگ پیدا نشد', true); return; }
+      const ids = Object.keys(war.tribes); const ownId = this.state.tribe && this.state.tribe.id;
+      const enemyId = ids.find(id => id !== ownId); const mine = war.tribes[ownId], enemy = war.tribes[enemyId];
+      if (!mine || !enemy) { this.toast('این جنگ متعلق به قبیله تو نیست', true); return; }
+      let lineupHtml = '';
+      for (let i=0;i<(mine.lineup || []).length;i++) {
+        const uid = mine.lineup[i]; let nm = uid === this.myId ? this.state.name : 'عضو';
+        try { nm = (await db.ref('players/' + uid + '/name').once('value')).val() || nm; } catch(e) {}
+        const controls = mine.leader === this.myId ? `<button class="btn small" onclick="Game.moveWarMember('${warId}',${i},-1)" ${i===0?'disabled':''}>▲</button> <button class="btn small" onclick="Game.moveWarMember('${warId}',${i},1)" ${i===mine.lineup.length-1?'disabled':''}>▼</button>` : '';
+        lineupHtml += `<div class="list-item"><span>${i+1}. ${this.escapeHtml(nm)}</span><span>${controls}</span></div>`;
+      }
+      let targets = '';
+      for (const uid of (enemy.lineup || Object.keys(enemy.members || {}))) {
+        const stars = Number((enemy.stars || {})[uid] || 0); let nm='بازیکن';
+        try { nm = (await db.ref('players/' + uid + '/name').once('value')).val() || nm; } catch(e) {}
+        targets += `<div class="list-item"><span>${this.escapeHtml(nm)} — ${'⭐'.repeat(stars)}${stars ? '' : 'بدون ستاره'}</span>${stars >= 3 ? '<span>کامل شد</span>' : `<button class="btn small" onclick="Game.warAttack('${warId}','${uid}')">حمله</button>`}</div>`;
+      }
+      const finished = war.status !== 'active';
+      this.modal(`<h2>⚔️ جنگ قبیله‌ای</h2><p class="info-text">${this.escapeHtml(mine.name)} در برابر ${this.escapeHtml(enemy.name)}</p><p class="info-text">امتیاز شما: ${mine.score || 0} | حریف: ${enemy.score || 0}</p><p class="info-text">حمله‌های شما: ${mine.attacks || 0}/10 | حریف: ${enemy.attacks || 0}/10</p><h3>چینش اعضای قبیله شما ${mine.leader===this.myId?'(فقط رئیس می‌تواند تغییر دهد)':''}</h3><div style="max-height:130px;overflow:auto">${lineupHtml}</div><h3 style="margin-top:10px">انتخاب هدف دشمن</h3><div style="max-height:180px;overflow:auto">${targets}</div>${finished?'<p class="info-text">این جنگ به پایان رسیده است.</p>':''}<button class="btn" style="margin-top:8px" onclick="Game.openTribeMenu()">بازگشت به قبیله</button>`);
+    } catch(e) { this.toast('نمایش جنگ ناموفق بود: ' + (e.message || e), true); }
+  },
+
+  async moveWarMember(warId, index, direction) {
+    const ownId = this.state.tribe && this.state.tribe.id;
+    try {
+      const ref = db.ref('tribeWars/' + warId);
+      const result = await ref.transaction(w => {
+        if (!w || w.status !== 'active' || !w.tribes || !w.tribes[ownId]) return;
+        const side = w.tribes[ownId]; if (side.leader !== this.myId) return;
+        const arr = side.lineup || []; const next = index + direction;
+        if (index < 0 || next < 0 || index >= arr.length || next >= arr.length) return;
+        [arr[index], arr[next]] = [arr[next], arr[index]]; side.lineup = arr; return w;
+      });
+      if (!result.committed) { this.toast('تغییر چینش مجاز نیست', true); return; }
+      await this.showTribeWar(warId);
+    } catch(e) { this.toast('ذخیره چینش ناموفق بود', true); }
+  },
+
+  async warAttack(warId, targetUid) {
+    const ownId = this.state.tribe && this.state.tribe.id;
+    if (!ownId || !this.myId) return;
+    try {
+      const warRef = db.ref('tribeWars/' + warId); const ws = await warRef.once('value'); const war = ws.val();
+      if (!war || war.status !== 'active') { this.toast('این جنگ فعال نیست', true); return; }
+      const enemyId = Object.keys(war.tribes).find(id => id !== ownId); const enemy = war.tribes[enemyId];
+      if (!enemy || !enemy.members || !enemy.members[targetUid]) { this.toast('هدف معتبر نیست', true); return; }
+      const targetSnap = await db.ref('players/' + targetUid).once('value'); const target = targetSnap.val() || {};
+      const myArmy = this.state.army || {}, theirArmy = target.army || {};
+      const power = army => Object.keys(army).reduce((sum,k) => sum + Math.max(0, Number(army[k]) || 0) * ({swordsman:150, archer:120, rider:350, camel:300, chariot:300, elephant:400, spearman:100, mobad:50, thief:20}[k] || 100), 0);
+      const attackPower = power(myArmy), defensePower = power(theirArmy) + (Number(target.palace && target.palace.level) || 1) * 120;
+      const stars = attackPower >= defensePower * 1.5 ? 3 : attackPower >= defensePower ? 2 : attackPower > 0 ? 1 : 0;
+      if (!stars) { this.toast('برای حمله باید دست‌کم یک نیرو داشته باشی', true); return; }
+      const result = await warRef.transaction(w => {
+        if (!w || w.status !== 'active' || !w.tribes || !w.tribes[ownId] || !w.tribes[enemyId]) return;
+        const mine = w.tribes[ownId], foe = w.tribes[enemyId];
+        if (!mine.members || !mine.members[this.myId] || !foe.members || !foe.members[targetUid]) return;
+        mine.stars = mine.stars || {}; foe.stars = foe.stars || {}; mine.usedAttackers = mine.usedAttackers || {};
+        if ((mine.attacks || 0) >= 10 || mine.usedAttackers[this.myId] || Number(foe.stars[targetUid] || 0) >= 3) return;
+        foe.stars[targetUid] = Math.min(3, Number(foe.stars[targetUid] || 0) + stars);
+        mine.attacks = (mine.attacks || 0) + 1; mine.usedAttackers[this.myId] = true;
+        mine.score = (mine.score || 0) + ({1:2,2:3,3:4}[stars] || 0);
+        w.attacks = w.attacks || []; w.attacks.push({ by:this.myId, target:targetUid, stars, time:Date.now() });
+        if (mine.attacks >= 10 && foe.attacks >= 10) w.status = 'finished';
+        return w;
+      });
+      if (!result.committed) { this.toast('حمله ثبت نشد؛ شاید قبلاً حمله کرده‌ای یا سهمیه ۱۰ حمله تمام شده', true); return; }
+      this.toast(stars + ' ستاره ثبت شد؛ امتیاز این حمله: ' + ({1:2,2:3,3:4}[stars] || 0));
+      await this.showTribeWar(warId);
+    } catch(e) { console.error(e); this.toast('حمله ناموفق بود: ' + (e.message || e), true); }
+  },
+
+  openTribeChat() {
+    const t = this.state.tribe; if (!t) return;
+    this.modal(`<h2>💬 گفت‌وگوی قبیله</h2><div class="chat-box" id="tribe-chat-box"></div><input id="tribe-chat-input" maxlength="180" placeholder="پیام برای اعضای قبیله..."><button class="btn" onclick="Game.sendTribeChat()">ارسال پیام</button><button class="btn" style="margin-top:8px" onclick="Game.openTribeMenu()">بازگشت</button>`);
+    if (this.tribeChatRef) this.tribeChatRef.off();
+    const box = document.getElementById('tribe-chat-box');
+    this.tribeChatRef = db.ref('tribeChats/' + t.id).limitToLast(40);
+    this.tribeChatRef.on('child_added', snap => {
+      if (!box || !document.body.contains(box)) return;
+      const m = snap.val() || {}; const row = document.createElement('div'); row.className = 'chat-msg';
+      const who = document.createElement('span'); who.className = 'who'; who.textContent = (m.name || 'عضو') + ': ';
+      row.appendChild(who); row.appendChild(document.createTextNode(m.text || '')); box.appendChild(row); box.scrollTop = box.scrollHeight;
+    });
+  },
+
+  async sendTribeChat() {
+    const t = this.state.tribe; const input = document.getElementById('tribe-chat-input');
+    const message = input ? input.value.trim() : ''; if (!t || !message) return;
+    try { await db.ref('tribes/' + t.id + '/members/' + this.myId).once('value').then(s => { if (!s.val()) throw new Error('not-member'); });
+      await db.ref('tribeChats/' + t.id).push({ uid: this.myId, name: this.state.name, text: message, time: Date.now() }); input.value = '';
+    } catch(e) { this.toast('ارسال پیام انجام نشد', true); }
+  },
+
+  async leaveTribe() {
+    const t = this.state.tribe; if (!t || !t.id) return;
+    try {
+      await db.ref('tribes/' + t.id).transaction(v => {
+        if (!v || !v.members) return v;
+        delete v.members[this.myId]; v.memberCount = Object.keys(v.members).length;
+        if (v.leader === this.myId) {
+          const next = v.deputy && v.members[v.deputy] ? v.deputy : Object.keys(v.members)[0];
+          if (next) { v.leader = next; if (v.deputy === next) v.deputy = null; }
+          else return null;
+        }
+        if (v.deputy === this.myId) v.deputy = null;
+        return v;
+      });
+      this.state.tribe = null; this.save(); this.closeModal(); this.toast('از قبیله خارج شدی');
+    } catch(e) { this.toast('خروج از قبیله ناموفق بود', true); }
+  },
+
+  openChat() {
+    if (!db) { this.toast('اتصال نیست', true); return; }
+    let html = '<h2>💬 گپ جهانی</h2><div class="chat-box" id="chat-box"></div>';
+    html += '<input id="chat-input" placeholder="پیام..." maxlength="180">';
+    html += '<button class="btn" style="margin-top:5px;" onclick="Game.sendChat()">ارسال</button>';
+    html += '<button class="btn" style="margin-top:5px;" onclick="Game.closeModal()">بستن</button>';
+    this.modal(html);
+    const box = document.getElementById('chat-box');
+    db.ref('chat').limitToLast(40).on('child_added', snap => {
+      const m = snap.val(); if (!m) return;
+      const row = document.createElement('div'); row.className = 'chat-msg';
+      const who = document.createElement('span'); who.className = 'who'; who.textContent = (m.name || 'بازیکن') + ': ';
+      row.appendChild(who); row.appendChild(document.createTextNode(m.text || '')); box.appendChild(row); box.scrollTop = box.scrollHeight;
+    });
+  },
+
+  sendChat() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim(); if (!text) return;
+    db.ref('chat').push({ uid: this.myId, name: this.state.name, text, time: Date.now() });
+    input.value = '';
+  },
+
+  openMarketMenu() {
+    let html = '<h2>🏪 بازار</h2>';
+    html += `<div class="list-item"><span>۲۰۰۰ زر ➡️ ۱۰ گوهر</span><button class="btn small" onclick="Game.trade('gold')">فروش</button></div>`;
+    html += `<div class="list-item"><span>۲۰۰۰ آهن ➡️ ۱۰ گوهر</span><button class="btn small" onclick="Game.trade('iron')">فروش</button></div>`;
+    html += '<button class="btn" style="margin-top:10px;" onclick="Game.closeModal()">بستن</button>';
+    this.modal(html);
+  },
+
+  trade(type) {
+    if (type === 'gold' && this.state.gold >= 2000) { this.state.gold -= 2000; this.state.gem += 10; }
+    else if (type === 'iron' && this.state.iron >= 2000) { this.state.iron -= 2000; this.state.gem += 10; }
+    else { this.toast('منابع کم', true); return; }
+    this.toast('تبدیل شد'); this.save(); this.render(); this.openMarketMenu();
+  },
+
+  openSettingsMenu() {
+    let html = '<h2>⚙️ تنظیمات</h2>';
+    html += '<button class="btn" style="margin-bottom:8px;" onclick="Game.showRules()">📜 اساسنامه</button>';
+    html += '<button class="btn" style="margin-bottom:8px;" onclick="Game.showOtherPlayers()">🌍 بازیکنان آنلاین</button>';
+    html += '<button class="btn" style="margin-bottom:8px;" onclick="Game.goodbye()">🚪 بدرود فرمانروای بزرگ</button>';
+    html += '<button class="btn danger" onclick="Game.deleteAccount()">🗑️ حذف اکانت</button>';
+    html += '<button class="btn" style="margin-top:10px;" onclick="Game.closeModal()">بستن</button>';
+    this.modal(html);
+  },
+
+  showRules() {
+    let html = '<h2>📜 اساسنامه EBREZ</h2><div class="info-text">';
+    html += '<p><b>هدف:</b> ساخت شهر، ارتش، حمله به دشمنان و تشکیل قبیله.</p>';
+    html += '<p><b>منابع:</b> زر (ساخت)، آهن (نظامی)، گوهر (ویژه).</p>';
+    html += '<p><b>کاخ:</b> قلب شهر. با ارتقا، سطح فرمانروایی بالا می‌رود.</p>';
+    html += '<p><b>ارتش:</b> در زورخانه آموزش ببین و به دشمنان حمله کن.</p>';
+    html += '<p><b>قبیله:</b> با دوستانت متحد شو.</p>';
+    html += '<p><b>شعار:</b> فرمانروایی از آنِ کسی است که سرزمینش را آباد کند.</p>';
+    html += '</div><button class="btn" style="margin-top:10px;" onclick="Game.openSettingsMenu()">بازگشت</button>';
+    this.modal(html);
+  },
+
+  goodbye() {
+    this.save();
+    this.modal('<h2>بدرود فرمانروای بزرگ</h2><p style="text-align:center; margin:20px 0; font-style:italic;">«فرمانروایی از آنِ کسی است که سرزمینش را آباد کند»</p><button class="btn" onclick="location.reload()">بازگشت به بازی</button>');
+  },
+
+  deleteAccount() {
+    this.modal('<h2>⚠️ حذف اکانت</h2><p>آیا مطمئنی؟ همه پیشرفتت پاک می‌شه.</p><button class="btn danger" onclick="localStorage.clear(); location.reload()">بله، پاک کن</button><button class="btn" style="margin-top:8px;" onclick="Game.openSettingsMenu()">لغو</button>');
+  },
+
+  async showOtherPlayers() {
+    if (!db) { this.toast('اتصال نیست', true); return; }
+    let html = '<h2>🌍 بازیکنان آنلاین</h2><div id="other-players-list">در حال دریافت...</div>';
+    html += '<button class="btn" style="margin-top:10px;" onclick="Game.openSettingsMenu()">بازگشت</button>';
+    this.modal(html);
+    const snap = await db.ref('publicProfiles').once('value');
+    const players = snap.val();
+    let list = '', count = 0;
+    if (players) {
+      for (let id in players) {
+        if (id === this.myId || !players[id] || typeof players[id] !== 'object') continue;
+        count++;
+        list += `<div class="list-item"><span>👤 ${String(players[id].name || 'فرمانروا').replace(/[<>]/g, '')}</span><span>کاخ ${Number(players[id].palaceLevel) || 1}</span></div>`;
+      }
+    }
+    document.getElementById('other-players-list').innerHTML = count === 0 ? 'کسی آنلاین نیست' : list;
+  },
+
+  openBattleHistory() {
+    const rows=Array.isArray(this.state.battleHistory)?this.state.battleHistory:[];
+    let html='<h2>📜 کارنامه نبردها</h2>';
+    html+=`<div class="row"><span>پیروزی</span><b>${this.state.wins||0}</b></div><div class="row"><span>شکست</span><b>${this.state.losses||0}</b></div><div class="row"><span>جام</span><b>${this.state.cups||0}</b></div>`;
+    if(!rows.length) html+='<p class="info-text">هنوز نبردی ثبت نشده است.</p>';
+    rows.forEach(r=>{html+=`<div class="list-item"><span>${this.escapeHtml(r.target||'حریف')} ${r.bot?'(ربات آزمایشی)':''}<br><small>${new Date(r.time||Date.now()).toLocaleString('fa-IR')}</small></span><span>${'⭐'.repeat(Number(r.stars)||0)}<br><small>غنیمت: ${r.lootGold||0} زر</small></span></div>`;});
+    html+='<button class="btn" onclick="Game.closeModal()">بستن</button>';this.modal(html);
+  },
+
+  render() {
+    if (!this.state) return;
+    document.getElementById('res-gold').textContent = this.state.gold;
+    document.getElementById('res-iron').textContent = this.state.iron;
+    document.getElementById('res-gem').textContent = this.state.gem;
+    document.getElementById('res-cups').textContent = this.state.cups || 0;
+    document.getElementById('hdr-name').textContent = this.state.name;
+    document.getElementById('hdr-lvl').textContent = 'کاخ ' + this.state.palace.level;
+
+    const city = document.getElementById('city');
+    if (city.children.length === 0) {
+      for (let i = 0; i < this.GRID * this.GRID; i++) {
+        const d = document.createElement('div'); d.className = 'cell'; d.addEventListener('click', () => this.selectCell(Array.prototype.indexOf.call(city.children, d))); city.appendChild(d);
+      }
+    }
+    const p = this.state.palace;
+    for (let i = 0; i < this.GRID * this.GRID; i++) {
+      const cell = city.children[i];
+      const x = i % this.GRID, y = Math.floor(i / this.GRID);
+      cell.className = 'cell'; cell.innerHTML = '';
+      if (p.x === x && p.y === y) {
+        cell.classList.add('occupied');
+        cell.innerHTML = `🏛️<span style="position:absolute; bottom:0; left:0; font-size:9px; background:#000; padding:1px 3px; border-radius:3px;">${p.level}</span>`;
+      }
+    }
+    (this.state.buildings || []).forEach(b => {
+      const idx = b.y * this.GRID + b.x;
+      const cell = city.children[idx];
+      if (cell && !(p.x === b.x && p.y === b.y)) {
+        cell.classList.add('occupied');
+        cell.title = b.name || b.type;
+        cell.innerHTML = `${b.icon || '🏠'}<span style="position:absolute;bottom:0;left:0;font-size:9px;background:#000;padding:1px 3px;border-radius:3px;">${b.level || 1}</span>`;
+      }
+    });
+  },
+
+  toast(msg, isErr) {
+    const w = document.getElementById('toast-wrap'); const d = document.createElement('div');
+    d.className = 'toast' + (isErr ? ' err' : ''); d.textContent = msg;
+    w.appendChild(d); setTimeout(() => d.remove(), 2500);
+  },
+
+  modal(html) { document.getElementById('modal').innerHTML = html; document.getElementById('modal-bg').classList.remove('hidden'); },
+  closeModal() { if (this.tribeChatRef) { this.tribeChatRef.off(); this.tribeChatRef = null; } document.getElementById('modal-bg').classList.add('hidden'); }
+};
+</script>
+</body>
+</html>
